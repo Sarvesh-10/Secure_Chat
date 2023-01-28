@@ -18,6 +18,7 @@ class DatabaseMethods {
 
   uploaduserInfo(Map<String, String> userMap) {
     FirebaseFirestore.instance.collection("users").add(userMap).catchError((e) {
+      // ignore: avoid_print
       print('error');
     });
   }
@@ -43,7 +44,7 @@ class DatabaseMethods {
     });
   }
 
-  getMessages(String chatRoomId) async{
+  getMessages(String chatRoomId) async {
     return await FirebaseFirestore.instance
         .collection('Chatroom')
         .doc(chatRoomId)

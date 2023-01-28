@@ -1,3 +1,4 @@
+import 'package:chat_app/Screens/signin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -23,21 +24,37 @@ class AuthMethods {
             context: context,
             builder: ((context) => AlertDialog(
                   title: Text("Wrong Password"),
-                  content: Text("Wrong Password!! Reset the password or try again"),
+                  content:
+                      Text("Wrong Password!! Reset the password or try again"),
                   actions: [
                     TextButton(
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, 'signin');
+                          Navigator.pushReplacement(context,
+                              MaterialPageRoute(builder: (context) {
+                            return SignIn();
+                          }));
                         },
                         child: Text("Ok"))
                   ],
                 )));
-      }
-      else 
-      {
-        showDialog(context: context, builder: ((context) => AlertDialog(title: Text(e.code,),actions: [TextButton(onPressed: (){
-            Navigator.pushReplacementNamed(context, 'signin');
-        }, child: Text("Ok"))],)));
+      } else {
+        showDialog(
+            context: context,
+            builder: ((context) => AlertDialog(
+                  title: Text(
+                    e.code,
+                  ),
+                  actions: [
+                    TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(context,
+                              MaterialPageRoute(builder: (context) {
+                            return SignIn();
+                          }));
+                        },
+                        child: Text("Ok"))
+                  ],
+                )));
       }
     }
   }
@@ -57,14 +74,15 @@ class AuthMethods {
                   actions: [
                     TextButton(
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, 'signin');
+                          Navigator.pushReplacement(context,
+                              MaterialPageRoute(builder: (context) {
+                            return SignIn();
+                          }));
                         },
                         child: Text("Ok"))
                   ],
                 )));
-      }
-      else if(e.code == 'ERROR_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL')
-      {
+      } else if (e.code == 'ERROR_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL') {
         showDialog(
             context: context,
             builder: ((context) => AlertDialog(
@@ -73,14 +91,15 @@ class AuthMethods {
                   actions: [
                     TextButton(
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, 'signin');
+                          Navigator.pushReplacement(context,
+                              MaterialPageRoute(builder: (context) {
+                            return SignIn();
+                          }));
                         },
                         child: Text("Ok"))
                   ],
                 )));
-      }
-      else 
-      {
+      } else {
         showDialog(
             context: context,
             builder: ((context) => AlertDialog(
@@ -89,16 +108,16 @@ class AuthMethods {
                   actions: [
                     TextButton(
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, 'signin');
+                             Navigator.pushReplacement(context,
+                              MaterialPageRoute(builder: (context) {
+                            return SignIn();
+                          }));
                         },
                         child: Text("Ok"))
                   ],
                 )));
       }
-    } 
-     
-
-    
+    }
   }
 
   Future resetPassword(String email) async {

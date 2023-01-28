@@ -26,30 +26,36 @@ class _ConversationScreenState extends State<ConversationScreen> {
       Map<String, dynamic> map = {
         "message": messageController.text,
         "sent_by": Constants.myName,
+        
       };
       await dbMethods.addMessages(widget.chatRoomId, map);
     }
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> readUser() {
+  Stream<Iterable<Messages>> readMessages() {
     return FirebaseFirestore.instance
         .collection('Chatroom')
         .doc(widget.chatRoomId)
         .collection('Chats')
-        .snapshots();
+        .snapshots()
+        .map((event) => event.docs.map((e) => Messages.fromJson(e.data())));
   }
 
+  
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? chatStream;
   Widget ChatMessages() {
-    return StreamBuilder(
-        stream: readUser(),
-        builder: (context, AsyncSnapshot<QuerySnapshot<Map<String,dynamic>>> snapshot) {
+    return StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('Chatroom').doc(widget.chatRoomId).collection('Chats').snapshots(),
+        builder: (context, snapshot) {
           if (snapshot.hasData) {
             return ListView.builder(
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
                   var snaps = snapshot.data!.docs[index];
+
+                  print("HERE I AM ");
                   return MessageTile(
-                      message: snaps['message'], sentBy: snaps['sent_by']);
+                      message: snaps.get('message'), sent_by:snaps.get('sent_by'));
                 });
           }
 
@@ -57,7 +63,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
         });
   }
 
-  Stream? chatStream;
   @override
   void initState() {
     // TODO: implement initState
@@ -70,7 +75,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   Widget Message(Messages m) {
-    return MessageTile(message: m.message!, sentBy: m.sentBy!);
+    return MessageTile(message: m.message!, sent_by: m.sentBy!);
   }
 
   @override
@@ -99,8 +104,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
                         ),
                       )),
                       IconButton(
-                          onPressed: () {
-                            sendMessage();
+                          onPressed: () async {
+                            await sendMessage();
                             messageController.clear();
                           },
                           icon: Icon(Icons.send)),
@@ -115,20 +120,20 @@ class _ConversationScreenState extends State<ConversationScreen> {
 }
 
 class MessageTile extends StatelessWidget {
-  MessageTile({required this.message, required this.sentBy});
+  MessageTile({required this.message, required this.sent_by});
   final String message;
-  final String sentBy;
+  final String sent_by;
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: sentBy == Constants.myName ? Colors.blue : Colors.white54,
-      alignment: sentBy == Constants.myName
+      color: sent_by == Constants.myName ? Colors.blue : Colors.white54,
+      alignment: sent_by == Constants.myName
           ? Alignment.centerRight
           : Alignment.centerLeft,
       child: Text(
         message,
         style: TextStyle(
-            color: sentBy == Constants.myName ? Colors.white : Colors.black),
+            color: sent_by == Constants.myName ? Colors.white : Colors.black),
       ),
     );
   }
