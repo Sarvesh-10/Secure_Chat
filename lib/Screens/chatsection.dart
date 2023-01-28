@@ -1,6 +1,9 @@
+import 'package:chat_app/Screens/conversationScreen.dart';
 import 'package:chat_app/Screens/signin.dart';
 import 'package:chat_app/Services/auth.dart';
 import 'package:chat_app/Services/constants.dart';
+import 'package:chat_app/database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/foundation/key.dart';
@@ -19,11 +22,41 @@ class ChatSection extends StatefulWidget {
 }
 
 class _ChatSectionState extends State<ChatSection> {
+  DatabaseMethods databaseMethods = DatabaseMethods();
+  Stream<QuerySnapshot>? chatRooms;
   @override
   void initState() {
     // TODO: implement initState
-    
+
+    databaseMethods.getChatRooms(Constants.myName).then((val) {
+      setState(() {
+        chatRooms = val;
+      });
+    });
     super.initState();
+  }
+
+  Widget chatRoomList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: chatRooms,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return ListView.builder(
+              itemCount: snapshot.data!.docs.length,
+              itemBuilder: (context, index) {
+                return ChatRoomTile(
+                  userName: snapshot.data!.docs[index]
+                      .get('chatRoomId')
+                      .toString()
+                      .replaceAll("_", "")
+                      .replaceAll(Constants.myName, ""),
+                  chatRoomId: snapshot.data!.docs[index].get('chatRoomId'),
+                );
+              });
+        }
+        return Container();
+      },
+    );
   }
 
   // getUserInfo() async {
@@ -58,6 +91,7 @@ class _ChatSectionState extends State<ChatSection> {
                 },
                 icon: Icon(Icons.logout))
           ],
+          title: Text("Chat Section"),
         ),
         floatingActionButton: FloatingActionButton(
           child: Icon(Icons.search_outlined),
@@ -67,17 +101,45 @@ class _ChatSectionState extends State<ChatSection> {
           },
         ),
         body: SafeArea(
-          child: Center(
-            child:
-                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text("CHAT SECTION",
-                  style: TextStyle(color: Colors.blue, fontSize: 30)),
-              Text(
-                "LOGGED IN AS ",
-              ),
-              Text(Constants.myName),
-            ]),
-          ),
+          child: chatRoomList(),
         ));
+  }
+}
+
+class ChatRoomTile extends StatelessWidget {
+  ChatRoomTile({required this.userName, required this.chatRoomId});
+  final String userName;
+  final String chatRoomId;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) {
+          return ConversationScreen(chatRoomId: chatRoomId,userName:userName);
+        }));
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+        child: Row(
+          children: [
+            Container(
+              alignment: Alignment.center,
+              height: 40,
+              width: 40,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.all(Radius.circular(15)),
+              ),
+              child: Text("${userName.substring(0, 1).toUpperCase()}"),
+            ),
+            SizedBox(
+              width: 40,
+            ),
+            Text("${userName}")
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -10,8 +10,9 @@ import 'package:flutter/widgets.dart';
 import 'package:chat_app/model/messages.dart';
 
 class ConversationScreen extends StatefulWidget {
-  ConversationScreen({required this.chatRoomId});
+  ConversationScreen({required this.chatRoomId,required this.userName});
   final chatRoomId;
+  final userName;
 
   @override
   State<ConversationScreen> createState() => _ConversationScreenState();
@@ -26,26 +27,21 @@ class _ConversationScreenState extends State<ConversationScreen> {
       Map<String, dynamic> map = {
         "message": messageController.text,
         "sent_by": Constants.myName,
-        
+        "time": DateTime.now().millisecondsSinceEpoch
       };
       await dbMethods.addMessages(widget.chatRoomId, map);
     }
   }
 
-  Stream<Iterable<Messages>> readMessages() {
-    return FirebaseFirestore.instance
-        .collection('Chatroom')
-        .doc(widget.chatRoomId)
-        .collection('Chats')
-        .snapshots()
-        .map((event) => event.docs.map((e) => Messages.fromJson(e.data())));
-  }
-
-  
   Stream<DocumentSnapshot<Map<String, dynamic>>>? chatStream;
   Widget ChatMessages() {
     return StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('Chatroom').doc(widget.chatRoomId).collection('Chats').snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('Chatroom')
+            .doc(widget.chatRoomId)
+            .collection('Chats')
+            .orderBy('time')
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             return ListView.builder(
@@ -55,7 +51,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
                   print("HERE I AM ");
                   return MessageTile(
-                      message: snaps.get('message'), sent_by:snaps.get('sent_by'));
+                      message: snaps.get('message'),
+                      sent_by: snaps.get('sent_by'));
                 });
           }
 
@@ -66,23 +63,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
   @override
   void initState() {
     // TODO: implement initState
-    dbMethods.getMessages(widget.chatRoomId).then((val) {
-      setState(() {
-        chatStream = val;
-      });
-    });
-    super.initState();
-  }
 
-  Widget Message(Messages m) {
-    return MessageTile(message: m.message!, sent_by: m.sentBy!);
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Chat App"),
+        title: Text(widget.userName.toString()),
       ),
       body: Container(
         child: Stack(
@@ -126,14 +115,28 @@ class MessageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: sent_by == Constants.myName ? Colors.blue : Colors.white54,
+      width: MediaQuery.of(context).size.width,
       alignment: sent_by == Constants.myName
           ? Alignment.centerRight
           : Alignment.centerLeft,
-      child: Text(
-        message,
-        style: TextStyle(
-            color: sent_by == Constants.myName ? Colors.white : Colors.black),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+        margin: EdgeInsets.symmetric(vertical: 15, horizontal: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.only(
+            topLeft:
+                sent_by == Constants.myName ? Radius.circular(20) : Radius.zero,
+            topRight:
+                sent_by == Constants.myName ? Radius.zero : Radius.circular(20),
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+          ),
+          color: sent_by == Constants.myName ? Colors.blue : Colors.green,
+        ),
+        child: Text(
+          message,
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }
