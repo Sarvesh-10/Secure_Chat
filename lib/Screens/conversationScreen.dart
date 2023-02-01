@@ -10,7 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:chat_app/model/messages.dart';
 
 class ConversationScreen extends StatefulWidget {
-  ConversationScreen({required this.chatRoomId,required this.userName});
+  ConversationScreen({required this.chatRoomId, required this.userName});
   final chatRoomId;
   final userName;
 
@@ -33,6 +33,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
+  ScrollController _controller = ScrollController();
   Stream<DocumentSnapshot<Map<String, dynamic>>>? chatStream;
   Widget ChatMessages() {
     return StreamBuilder<QuerySnapshot>(
@@ -40,16 +41,17 @@ class _ConversationScreenState extends State<ConversationScreen> {
             .collection('Chatroom')
             .doc(widget.chatRoomId)
             .collection('Chats')
-            .orderBy('time')
+            .orderBy('time',descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             return ListView.builder(
+              reverse: true,
+                
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
                   var snaps = snapshot.data!.docs[index];
 
-                  print("HERE I AM ");
                   return MessageTile(
                       message: snaps.get('message'),
                       sent_by: snaps.get('sent_by'));
@@ -65,6 +67,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
     // TODO: implement initState
 
     super.initState();
+
+   
+    
   }
 
   @override
@@ -74,9 +79,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
         title: Text(widget.userName.toString()),
       ),
       body: Container(
-        child: Stack(
+        child: Column(
           children: [
-            ChatMessages(),
+            Expanded(child: ChatMessages()),
             Container(
               alignment: Alignment.bottomCenter,
               child: Container(
@@ -96,6 +101,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                           onPressed: () async {
                             await sendMessage();
                             messageController.clear();
+                            Focus.of(context).unfocus();
                           },
                           icon: Icon(Icons.send)),
                     ]),
