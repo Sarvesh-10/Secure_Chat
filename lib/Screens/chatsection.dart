@@ -28,12 +28,12 @@ class _ChatSectionState extends State<ChatSection> {
   void initState() {
     // TODO: implement initState
 
+    super.initState();
     databaseMethods.getChatRooms(Constants.myName).then((val) {
       setState(() {
         chatRooms = val;
       });
     });
-    super.initState();
   }
 
   Widget chatRoomList() {
@@ -119,7 +119,7 @@ class ChatRoomTile extends StatelessWidget {
           return ConversationScreen(chatRoomId: chatRoomId,userName:userName);
         }));
       },
-      child: Container(
+      child:  Container(
         padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
         child: Row(
           children: [
