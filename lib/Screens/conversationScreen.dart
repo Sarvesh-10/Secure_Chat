@@ -2,12 +2,15 @@ import 'package:chat_app/Services/constants.dart';
 import 'package:chat_app/Services/helperfunctions.dart';
 import 'package:chat_app/database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:encrypt/encrypt.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/src/foundation/key.dart';
+import 'package:encrypt/encrypt.dart' as prefix;
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/widgets.dart';
 import 'package:chat_app/model/messages.dart';
+
 
 class ConversationScreen extends StatefulWidget {
   ConversationScreen({required this.chatRoomId, required this.userName});
@@ -22,10 +25,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
   DatabaseMethods dbMethods = new DatabaseMethods();
   TextEditingController messageController = TextEditingController();
 
+  
+  final key = prefix.Key.fromUtf8('my 32 length key................');
+  final iv = IV.fromLength(16);
+
+  Encrypter? encrypter;
   sendMessage() async {
     if (messageController.text.isNotEmpty) {
       Map<String, dynamic> map = {
-        "message": messageController.text,
+        "message": encrypter!.encrypt(messageController.text,iv: iv).base64,
         "sent_by": Constants.myName,
         "time": DateTime.now().millisecondsSinceEpoch
       };
@@ -41,20 +49,19 @@ class _ConversationScreenState extends State<ConversationScreen> {
             .collection('Chatroom')
             .doc(widget.chatRoomId)
             .collection('Chats')
-            .orderBy('time',descending: true)
+            .orderBy('time', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             return ListView.builder(
-              reverse: true,
-                
+                reverse: true,
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
                   var snaps = snapshot.data!.docs[index];
-
+                  String val =
+                      encrypter!.decrypt64(snaps.get('message'), iv: iv);
                   return MessageTile(
-                      message: snaps.get('message'),
-                      sent_by: snaps.get('sent_by'));
+                      message: val, sent_by: snaps.get('sent_by'));
                 });
           }
 
@@ -65,11 +72,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
   @override
   void initState() {
     // TODO: implement initState
-
+    encrypter = Encrypter(AES(key));
     super.initState();
-
-   
-    
   }
 
   @override
