@@ -41,33 +41,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  Stream<DocumentSnapshot<Map<String, dynamic>>>? chatStream;
-  Widget ChatMessages() {
-    return StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('Chatroom')
-            .doc(widget.chatRoomId)
-            .collection('Chats')
-            .orderBy('time', descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return ListView.builder(
-                reverse: true,
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  var snaps = snapshot.data!.docs[index];
-                  String val =
-                      encrypter!.decrypt64(snaps.get('message'), iv: iv);
-                  return MessageTile(
-                      message: val, sent_by: snaps.get('sent_by'));
-                });
-          }
-
-          return Container();
-        });
-  }
-
   @override
   void initState() {
     // TODO: implement initState
@@ -114,7 +87,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
                             messageController.clear();
                             Focus.of(context).unfocus();
                           },
-                          icon: Icon(Icons.telegram_sharp,color: Colors.blueGrey,size: 40,)),
+                          icon: Icon(
+                            Icons.telegram_sharp,
+                            color: Colors.blueGrey,
+                            size: 40,
+                          )),
                     ]),
               ),
             )
@@ -160,10 +137,6 @@ class MessageTile extends StatelessWidget {
   }
 }
 
-// https://github.com/Sarvesh-10/ChatApp
-// git config --global user.email "you@example.com"
-//   git config --global user.name "Your Name"
-
 class MessageStream extends StatefulWidget {
   MessageStream({required this.chatRoomId});
   final chatRoomId;
@@ -191,7 +164,7 @@ class _MessageStreamState extends State<MessageStream> {
           .collection('Chatroom')
           .doc(widget.chatRoomId)
           .collection('Chats')
-          .orderBy('time')
+          .orderBy('time', descending: true)
           .snapshots(),
       builder: (context,
           AsyncSnapshot<QuerySnapshot<Map<String, dynamic>>> snapshot) {
@@ -210,7 +183,7 @@ class _MessageStreamState extends State<MessageStream> {
           }
           return GroupedListView(
             reverse: true,
-            order: GroupedListOrder.DESC,
+            
             useStickyGroupSeparators: true,
             floatingHeader: true,
             elements: msgs,
@@ -260,7 +233,10 @@ class _MessageStreamState extends State<MessageStream> {
                         children: [
                           Text(
                             mssge.message,
-                            style: TextStyle(color: Colors.white,fontStyle: FontStyle.italic,fontSize: 17),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontStyle: FontStyle.italic,
+                                fontSize: 17),
                           ),
                           SizedBox(
                             height: 5,
