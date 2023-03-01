@@ -101,11 +101,14 @@ class SearchTile extends StatelessWidget {
       "users": users,
       "chatRoomId": chatRoomId
     };
-    
+
     dbMethods.createChatRoom(chatRoomId, charRoomMap);
-   
+
     Navigator.push(context, MaterialPageRoute(builder: (context) {
-      return ConversationScreen(chatRoomId: chatRoomId,userName: userName,);
+      return ConversationScreen(
+        chatRoomId: chatRoomId,
+        userName: userName,
+      );
     }));
   }
 

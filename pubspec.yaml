@@ -43,6 +43,8 @@ dependencies:
   encrypt: ^5.0.1
   grouped_list: ^5.1.2
   intl: ^0.18.0
+  emoji_picker: ^0.0.2
+  flutter_keyboard_visibility: ^5.4.0
 
 dev_dependencies:
   flutter_test:

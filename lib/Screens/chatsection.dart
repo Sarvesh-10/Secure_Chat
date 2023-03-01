@@ -4,14 +4,19 @@ import 'package:chat_app/Services/auth.dart';
 import 'package:chat_app/Services/constants.dart';
 import 'package:chat_app/database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:encrypt/encrypt.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/src/foundation/key.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Services/helperfunctions.dart';
 import 'search.dart';
+import 'package:chat_app/model/messages.dart';
+import 'package:encrypt/encrypt.dart' as prefix;
 
 class ChatSection extends StatefulWidget {
   ChatSection({this.user});
@@ -24,6 +29,7 @@ class ChatSection extends StatefulWidget {
 class _ChatSectionState extends State<ChatSection> {
   DatabaseMethods databaseMethods = DatabaseMethods();
   Stream<QuerySnapshot>? chatRooms;
+
   @override
   void initState() {
     // TODO: implement initState
@@ -41,29 +47,29 @@ class _ChatSectionState extends State<ChatSection> {
       stream: chatRooms,
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return ListView.builder(
-              itemCount: snapshot.data!.docs.length,
-              itemBuilder: (context, index) {
-                return ChatRoomTile(
-                  userName: snapshot.data!.docs[index]
-                      .get('chatRoomId')
-                      .toString()
-                      .replaceAll("_", "")
-                      .replaceAll(Constants.myName, ""),
-                  chatRoomId: snapshot.data!.docs[index].get('chatRoomId'),
-                );
-              });
+          return ListView.separated(
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              return ChatRoomTile(
+                userName: snapshot.data!.docs[index]
+                    .get('chatRoomId')
+                    .toString()
+                    .replaceAll("_", "")
+                    .replaceAll(Constants.myName, ""),
+                chatRoomId: snapshot.data!.docs[index].get('chatRoomId'),
+              );
+            },
+            separatorBuilder: (BuildContext context, int index) {
+              return Divider(
+                color: Colors.black,
+              );
+            },
+          );
         }
         return Container();
       },
     );
   }
-
-  // getUserInfo() async {
-  //   SharedPreferences sharedPrefs = await SharedPreferences.getInstance();
-  //   Constants.myName =
-  //       sharedPrefs.get(HelperFunctions.sharedPreferenceUserNameKey) as String;
-  // }
 
   late AuthMethods _authMethods;
 
@@ -116,29 +122,72 @@ class ChatRoomTile extends StatelessWidget {
     return InkWell(
       onTap: () {
         Navigator.push(context, MaterialPageRoute(builder: (context) {
-          return ConversationScreen(chatRoomId: chatRoomId,userName:userName);
+          return ConversationScreen(chatRoomId: chatRoomId, userName: userName);
         }));
       },
-      child:  Container(
-        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-        child: Row(
-          children: [
-            Container(
-              alignment: Alignment.center,
-              height: 40,
-              width: 40,
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.all(Radius.circular(15)),
-              ),
-              child: Text("${userName.substring(0, 1).toUpperCase()}"),
-            ),
-            SizedBox(
-              width: 40,
-            ),
-            Text("${userName}")
-          ],
-        ),
+      child: ListTile(
+          leading: Profile(
+            userName: userName,
+          ),
+          title: Text(userName),
+          subtitle: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('Chatroom')
+                .doc(chatRoomId)
+                .collection('Chats')
+                .orderBy('time', descending: true)
+                .limit(1)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                final key =
+                    prefix.Key.fromUtf8('my 32 length key................');
+                final iv = IV.fromLength(16);
+                Encrypter encrypter = Encrypter(AES(key));
+                var snap = snapshot.data!.docs[0];
+                String lasMsg =
+                    encrypter.decrypt64(snap.get('message'), iv: iv);
+                Timestamp time = snap.get('time');
+                DateTime fetched = time.toDate();
+                String timeOrDate;
+                if (DateFormat.yMMMMd().format(DateTime.now()) ==
+                    DateFormat.yMMMMd().format(fetched)) {
+                  timeOrDate =
+                      fetched.hour.toString() + ":" + fetched.minute.toString();
+                } else {
+                  timeOrDate = DateFormat.yMMMMd().format(fetched);
+                }
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(lasMsg),
+                    Text(timeOrDate),
+                  ],
+                );
+              }
+              return Text("");
+            },
+          )),
+    );
+  }
+}
+
+class Profile extends StatelessWidget {
+  Profile({required this.userName});
+  final String userName;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      height: 50,
+      width: 50,
+      decoration: BoxDecoration(
+        color: Colors.deepPurple,
+        borderRadius: BorderRadius.all(Radius.circular(25)),
+      ),
+      child: Text(
+        "${userName.substring(0, 1).toUpperCase()}",
+        style: TextStyle(color: Colors.white),
       ),
     );
   }

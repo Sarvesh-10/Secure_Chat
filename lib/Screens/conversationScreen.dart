@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:encrypt/encrypt.dart' as prefix;
+import 'package:flutter/services.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/widgets.dart';
 import 'package:chat_app/model/messages.dart';
@@ -66,6 +67,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Emoji(),
                       Expanded(
                           child: Padding(
                         padding: const EdgeInsets.only(
@@ -259,4 +261,24 @@ class _MessageStreamState extends State<MessageStream> {
       },
     );
   }
+}
+
+class Emoji extends StatelessWidget {
+  const Emoji({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 4),
+      child: IconButton(
+        icon: Icon(Icons.emoji_emotions_outlined),
+        onPressed: (){},
+      ),
+    );
+  }
+
+  // void onClicked() async {
+  //   await SystemChannels.textInput.invokeMethod('TextInput.hide');
+  //   await Future.delayed(Duration(milliseconds: 100));
+  // }
 }
