@@ -166,7 +166,7 @@ class _MessageStreamState extends State<MessageStream> {
           .collection('Chatroom')
           .doc(widget.chatRoomId)
           .collection('Chats')
-          .orderBy('time', descending: true)
+          .orderBy('time')
           .snapshots(),
       builder: (context,
           AsyncSnapshot<QuerySnapshot<Map<String, dynamic>>> snapshot) {
@@ -185,13 +185,13 @@ class _MessageStreamState extends State<MessageStream> {
           }
           return GroupedListView(
             reverse: true,
-            
+            order: GroupedListOrder.DESC,
             useStickyGroupSeparators: true,
             floatingHeader: true,
             elements: msgs,
             groupBy: (Messages element) {
               return DateTime(
-                  element.time.day, element.time.month, element.time.year);
+                 element.time.year,element.time.month,element.time.day);
             },
             groupHeaderBuilder: (Messages message) => SizedBox(
               height: 70,
@@ -272,7 +272,7 @@ class Emoji extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: 4),
       child: IconButton(
         icon: Icon(Icons.emoji_emotions_outlined),
-        onPressed: (){},
+        onPressed: () {},
       ),
     );
   }
