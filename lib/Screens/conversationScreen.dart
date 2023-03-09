@@ -1,18 +1,18 @@
+import 'dart:io';
+
 import 'package:chat_app/Services/constants.dart';
-import 'package:chat_app/Services/helperfunctions.dart';
 import 'package:chat_app/database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:encrypt/encrypt.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/gestures.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:encrypt/encrypt.dart' as prefix;
-import 'package:flutter/services.dart';
-import 'package:flutter/src/widgets/framework.dart';
-import 'package:flutter/widgets.dart';
 import 'package:chat_app/model/messages.dart';
+import 'package:flutter/rendering.dart';
 import 'package:grouped_list/grouped_list.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
 class ConversationScreen extends StatefulWidget {
   ConversationScreen({required this.chatRoomId, required this.userName});
@@ -31,14 +31,66 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final iv = IV.fromLength(16);
 
   Encrypter? encrypter;
+
+  File? imageFile;
   sendMessage() async {
     if (messageController.text.isNotEmpty) {
       Map<String, dynamic> map = {
         "message": encrypter!.encrypt(messageController.text, iv: iv).base64,
         "sent_by": Constants.myName,
+        "type": "text",
         "time": DateTime.now(),
       };
       await dbMethods.addMessages(widget.chatRoomId, map);
+    }
+  }
+
+  Future getImage() async {
+    ImagePicker picker = ImagePicker();
+
+    await picker.pickImage(source: ImageSource.gallery).then((xFile) {
+      if (xFile != null) {
+        imageFile = File(xFile.path);
+        uploadImage();
+      }
+    }); //value is of type XFile
+  }
+
+  uploadImage() async {
+    String fileName = Uuid().v1();
+    int status = 1;
+    await FirebaseFirestore.instance
+        .collection('Chatroom')
+        .doc(widget.chatRoomId)
+        .collection('Chats')
+        .doc(fileName)
+        .set({
+      "message": "",
+      "sent_by": Constants.myName,
+      "type": "img",
+      "time": DateTime.now(),
+    });
+    var ref =
+        FirebaseStorage.instance.ref().child('images').child("$fileName.jpg");
+    var uploadTask = await ref.putFile(imageFile!).catchError((error) async {
+      await FirebaseFirestore.instance
+          .collection('Chatroom')
+          .doc(widget.chatRoomId)
+          .collection('Chats')
+          .doc(fileName)
+          .delete();
+      status = 0;
+    });
+    if (status == 1) {
+      String imageUrl = await uploadTask.ref.getDownloadURL();
+      await FirebaseFirestore.instance
+          .collection('Chatroom')
+          .doc(widget.chatRoomId)
+          .collection('Chats')
+          .doc(fileName)
+          .update({"message": imageUrl});
+
+      return;
     }
   }
 
@@ -76,6 +128,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
                         child: TextField(
                           controller: messageController,
                           decoration: InputDecoration(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                Icons.image,
+                                size: 30,
+                              ),
+                              onPressed: () {
+                                getImage();
+                              },
+                            ),
                             hintText: "Message...",
                             border: OutlineInputBorder(
                                 borderRadius:
@@ -98,41 +159,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
               ),
             )
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class MessageTile extends StatelessWidget {
-  MessageTile({required this.message, required this.sent_by});
-  final String message;
-  final String sent_by;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      alignment: sent_by == Constants.myName
-          ? Alignment.centerRight
-          : Alignment.centerLeft,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-        margin: EdgeInsets.symmetric(vertical: 15, horizontal: 5),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.only(
-            topLeft:
-                sent_by == Constants.myName ? Radius.circular(20) : Radius.zero,
-            topRight:
-                sent_by == Constants.myName ? Radius.zero : Radius.circular(20),
-            bottomLeft: Radius.circular(20),
-            bottomRight: Radius.circular(20),
-          ),
-          color: sent_by == Constants.myName ? Colors.blue : Colors.green,
-        ),
-        child: Text(
-          message,
-          style: TextStyle(color: Colors.white),
         ),
       ),
     );
@@ -175,13 +201,19 @@ class _MessageStreamState extends State<MessageStream> {
           List<Messages> msgs = [];
           for (var m in messages) {
             Map data = m.data();
+            String msg;
+            msg = data['message'];
+            if (data["type"] == "text")
+              msg = encrypter!.decrypt64(data['message'], iv: iv);
 
-            final msg = encrypter!.decrypt64(data['message'], iv: iv);
             final sent_by = data['sent_by'];
             Timestamp time = data['time'];
 
-            msgs.add(
-                Messages(message: msg, sentBy: sent_by, time: time.toDate()));
+            msgs.add(Messages(
+                message: msg,
+                sentBy: sent_by,
+                time: time.toDate(),
+                type: data['type']));
           }
           return GroupedListView(
             reverse: true,
@@ -191,7 +223,7 @@ class _MessageStreamState extends State<MessageStream> {
             elements: msgs,
             groupBy: (Messages element) {
               return DateTime(
-                 element.time.year,element.time.month,element.time.day);
+                  element.time.year, element.time.month, element.time.day);
             },
             groupHeaderBuilder: (Messages message) => SizedBox(
               height: 70,
@@ -208,51 +240,8 @@ class _MessageStreamState extends State<MessageStream> {
               )),
             ),
             itemBuilder: (context, Messages mssge) {
-              return Align(
-                alignment: Constants.myName == mssge.sentBy
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                    topLeft: mssge.sentBy == Constants.myName
-                        ? Radius.circular(20)
-                        : Radius.zero,
-                    topRight: mssge.sentBy == Constants.myName
-                        ? Radius.zero
-                        : Radius.circular(20),
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  )),
-                  color: mssge.sentBy == Constants.myName
-                      ? Colors.deepOrange
-                      : Colors.grey,
-                  elevation: 8,
-                  child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            mssge.message,
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontStyle: FontStyle.italic,
-                                fontSize: 17),
-                          ),
-                          SizedBox(
-                            height: 5,
-                          ),
-                          Text(
-                            mssge.time.hour.toString() +
-                                ":" +
-                                mssge.time.minute.toString(),
-                            textAlign: TextAlign.end,
-                            style: TextStyle(color: Colors.white, fontSize: 10),
-                          ),
-                        ],
-                      )),
-                ),
+              return MessageTile(
+                mssge: mssge,
               );
             },
           );
@@ -260,6 +249,76 @@ class _MessageStreamState extends State<MessageStream> {
         return Container();
       },
     );
+  }
+}
+
+class MessageTile extends StatelessWidget {
+  MessageTile({required this.mssge});
+  Messages mssge;
+
+  @override
+  Widget build(BuildContext context) {
+    return mssge.type == 'text'
+        ? Align(
+            alignment: Constants.myName == mssge.sentBy
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+            child: Card(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                topLeft: mssge.sentBy == Constants.myName
+                    ? Radius.circular(20)
+                    : Radius.zero,
+                topRight: mssge.sentBy == Constants.myName
+                    ? Radius.zero
+                    : Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              )),
+              color: mssge.sentBy == Constants.myName
+                  ? Colors.deepOrange
+                  : Colors.grey,
+              elevation: 8,
+              child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        mssge.message,
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 17),
+                      ),
+                      SizedBox(
+                        height: 5,
+                      ),
+                      Text(
+                        mssge.time.hour.toString() +
+                            ":" +
+                            mssge.time.minute.toString(),
+                        textAlign: TextAlign.end,
+                        style: TextStyle(color: Colors.white, fontSize: 10),
+                      ),
+                    ],
+                  )),
+            ),
+          )
+        : Container(
+            height: 200,
+            width: 200,
+            alignment: mssge.sentBy == Constants.myName
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+            child: Container(
+              height: 200,
+              width: 200,
+              alignment: Alignment.center,
+              child: mssge.message != ""
+                  ? Image.network(mssge.message)
+                  : CircularProgressIndicator(),
+            ));
   }
 }
 

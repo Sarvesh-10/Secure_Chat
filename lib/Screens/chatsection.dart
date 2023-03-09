@@ -145,8 +145,10 @@ class ChatRoomTile extends StatelessWidget {
                 final iv = IV.fromLength(16);
                 Encrypter encrypter = Encrypter(AES(key));
                 var snap = snapshot.data!.docs[0];
-                String lasMsg =
-                    encrypter.decrypt64(snap.get('message'), iv: iv);
+                String lasMsg = "";
+                if (snap['type'] == 'text') {
+                  lasMsg = encrypter.decrypt64(snap.get('message'), iv: iv);
+                }
                 Timestamp time = snap.get('time');
                 DateTime fetched = time.toDate();
                 String timeOrDate;
@@ -160,7 +162,7 @@ class ChatRoomTile extends StatelessWidget {
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(lasMsg),
+                    snap['type'] == 'text'?Text(lasMsg):Icon(Icons.image),
                     Text(timeOrDate),
                   ],
                 );
